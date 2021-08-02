@@ -1,0 +1,7 @@
+The specific table that this was initially made for, has certain outcomes 
+that includes rolling on a specific table multiple times, ignoring certain
+outcomes:
+	Add an 'exception'-function.
+	Add a 'this many times'-function, to the goto-function.
+	Add a funtion that allows the user to decide the recursive 
+		protection variable.
