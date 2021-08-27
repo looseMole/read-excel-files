@@ -5,7 +5,8 @@ from openpyxl import DEFUSEDXML
 
 # Declarations of global variables:
 workbook = openpyxl.load_workbook(filename="customDiceOutcomes.xlsx")
-sheet = workbook.active
+diceSheet = workbook.active
+settingSheet = workbook["settings"]
 
 # Setup:
 if DEFUSEDXML is False:
@@ -37,7 +38,7 @@ class Table:
     diceRoll = 1
 
     outcomeAmount = 0
-    k = 0
+    cellNumber = 0
     i = 0
 
     gotoTable = 0
@@ -51,7 +52,7 @@ class Table:
             # The following loop makes the startRow value fit with the desired table.
             while self.actualTableNumber < self.tableNumber-1:
                 while self.empty < 2:
-                    if not sheet["B" + str(self.startRow)].value:
+                    if not diceSheet["B" + str(self.startRow)].value:
                         self.empty += 1
                         # print("Empty = " + str(self.empty))
                     else:
@@ -63,19 +64,20 @@ class Table:
 
             # Readying variables for upcoming loop
             self.minMaxRow = self.startRow + 1
-            self.min = str_to_int_or_float(sheet["B" + str(self.minMaxRow)].value)
-            self.max = str_to_int_or_float(sheet["B" + str(self.minMaxRow)].value)
+            self.min = str_to_int_or_float(diceSheet["B" + str(self.minMaxRow)].value)
+            self.max = str_to_int_or_float(diceSheet["B" + str(self.minMaxRow)].value)
             # This loop establishes the min and max values for the table.
             while self.empty < 2:
-                if not sheet["B" + str(self.minMaxRow)].value:
+                if not diceSheet["B" + str(self.minMaxRow)].value:
                     self.empty += 1
-                elif str_to_int_or_float(sheet["B" + str(self.minMaxRow)].value) < self.min:
+                elif str_to_int_or_float(diceSheet["B" + str(self.minMaxRow)].value) < self.min:
                     self.empty = 0
-                    self.min = str_to_int_or_float(sheet["B" + str(self.minMaxRow)].value)
-                elif str_to_int_or_float(sheet["B" + str(self.minMaxRow)].value) > self.max:
+                    self.min = str_to_int_or_float(diceSheet["B" + str(self.minMaxRow)].value)
+                elif str_to_int_or_float(diceSheet["B" + str(self.minMaxRow)].value) > self.max:
                     self.empty = 0
-                    self.max = str_to_int_or_float(sheet["B" + str(self.minMaxRow)].value)
-                else:
+                    self.max = str_to_int_or_float(diceSheet["B" + str(self.minMaxRow)].value)
+                else:  # Because str_to_int_or_float does not give errors when its input isn't
+                    # compatible (letters, for instance).
                     self.empty = 0
                 self.minMaxRow += 1
 
@@ -83,15 +85,15 @@ class Table:
             self.OutcomeArray = []
 
             # Create list of possible outcomes:
-            self.outcomeAmount = int(((self.minMaxRow - 4) - (self.startRow + 1)) / 3 + 1)
+            self.outcomeAmount = int(((self.minMaxRow - 4) - (self.startRow + 1)) / 3 + 1)  # It makes sense.
             # print(str(self.outcomeAmount))
-            self.k = self.startRow + 1
+            self.cellNumber = self.startRow + 1
             while self.i < self.outcomeAmount:
-                self.outcome = TableContent(self.k)
+                self.outcome = TableContent(self.cellNumber)
                 self.OutcomeArray.append(self.outcome)
 
                 self.i += 1
-                self.k += 3
+                self.cellNumber += 3
         else:
             print("Minor error: Invalid table number. Please use a valid table number in accordance with the README.txt")
 
@@ -124,40 +126,44 @@ class TableContent:
     gotoTable = 0
     def __init__(self, row):
         self.row = row
-        if str_to_int_or_float(sheet["B" + str(self.row)].value) < str_to_int_or_float(sheet["B" + str(self.row + 1)].value):
-            self.min = str_to_int_or_float(sheet["B" + str(self.row)].value)
-            self.max = str_to_int_or_float(sheet["B" + str(self.row + 1)].value)
+        # Checks if the user has typed the min and max values into the correct cells. Otherwise, it switches them.
+        if str_to_int_or_float(diceSheet["B" + str(self.row)].value) < str_to_int_or_float(diceSheet["B" + str(self.row + 1)].value):
+            self.min = str_to_int_or_float(diceSheet["B" + str(self.row)].value)
+            self.max = str_to_int_or_float(diceSheet["B" + str(self.row + 1)].value)
         else:
-            self.min = str_to_int_or_float(sheet["B" + str(self.row + 1)].value)
-            self.max = str_to_int_or_float(sheet["B" + str(self.row)].value)
+            self.min = str_to_int_or_float(diceSheet["B" + str(self.row + 1)].value)
+            self.max = str_to_int_or_float(diceSheet["B" + str(self.row)].value)
 
-        self.output = sheet["C" + str(self.row)].value
+        # Reads the output
+        self.output = diceSheet["C" + str(self.row)].value
 
-        if sheet["D" + str(self.row)].value:
-            self.gotoTable = str_to_int_or_float(sheet["D" + str(self.row)].value)
+        # Checks for possible values in the goto-column.
+        if diceSheet["D" + str(self.row)].value:
+            self.gotoTable = str_to_int_or_float(diceSheet["D" + str(self.row)].value)
 
     def getContentInfo(self):
         print(str(self.output))
         print('')
         return self.gotoTable
 
+
 # Running code:
 # Redying variables for the upcoming loop:
 empty = 0
 startRow = 1
-TableCounter = 0
+tableAmount = 0
 # The following loop makes the startRow value fit with the desired table.
 while True:
     while empty < 2:
-        if not sheet["B" + str(startRow)].value:
+        if not diceSheet["B" + str(startRow)].value:
             empty += 1
             # print("Empty = " + str(self.empty))
         else:
             empty = 0
             # print("Empty = " + str(self.empty))
         startRow += 1
-    TableCounter += 1
-    if not sheet["B" + str(startRow)].value:
+    tableAmount += 1
+    if not diceSheet["B" + str(startRow)].value:
         break
     empty = 0
 
@@ -167,7 +173,7 @@ TableArray = []
 # Redying variables:
 i = 0
 # Storing tables in the appropriate array.
-while i < TableCounter:
+while i < tableAmount:
     ListedTable = Table(i + 1)
     TableArray.append(ListedTable)
     i += 1
@@ -203,14 +209,14 @@ while True:
                         userInput = input('...in integers, please: ')
 
     # If input is greater than 0, the appropriate table will be found.
-    if 0 < userInput <= TableCounter:
+    if 0 < userInput <= tableAmount:
         print('Rolling on table ' + str(userInput) + '...')
         gotoTable = TableArray[userInput - 1].roll()
         recursiveProtectionVariable = 0
 
     elif len(TableArray) < userInput:
         print('There aren\'t that many tables to choose from.')
-        print('Please write a number smaller than, or equal to ' + str(TableCounter) + '.')
+        print('Please write a number smaller than, or equal to ' + str(tableAmount) + '.')
         print('Or write a number smaller than 0, if you want to exit the program.')
 
     elif userInput <= 0:
@@ -223,7 +229,7 @@ while True:
         # If the program has executed more than x tabels since user-input,
         # it will shut down, as to not run in an infinite loop.
         recursiveProtectionVariable += 1
-        if 20 < recursiveProtectionVariable:
+        if str_to_int_or_float(settingSheet["B2"].value) < recursiveProtectionVariable:
             gotoTable = 0
             print('Execution stopped, due to tabels being executed more than 20 times without user-input.')
 
