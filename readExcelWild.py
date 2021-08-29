@@ -97,6 +97,9 @@ class Table:
         else:
             print("Minor error: Invalid table number. Please use a valid table number in accordance with the README.txt")
 
+        self.exceptMin = 0
+        self.exceptMax = 1
+
     def getTableInfo(self):
         print("Table no. " + str(self.tableNumber) + " begins at row " + str(self.startRow) + ".")
         print("It has " + str(self.min) + " as min, and " + str(self.max) + " as max.")
@@ -107,16 +110,36 @@ class Table:
 
     def roll(self):
         # Utilizes the Random module, to "throw the dice" between Min and Max.
-        self.diceRoll = random.randint(self.min, self.max + 1)
+        self.diceRoll = random.randint(self.min, self.max)
         print("You rolled " + str(self.diceRoll))
         print('')
 
         # Finds the first outcome which the rolled value is within.
         for n in range(0, self.outcomeAmount):
             if self.OutcomeArray[n].min <= self.diceRoll <= self.OutcomeArray[n].max:
-                self.gotoTable = self.OutcomeArray[n].getContentInfo()
+                self.gotoTable, self.exceptMin, self.exceptMax = self.OutcomeArray[n].getContentInfo()
 
-        return self.gotoTable
+        return self.gotoTable, self.exceptMin, self.exceptMax
+
+    def gotoRoll(self, exceptMin = 0, exceptMax = 0):
+        self.exceptMin = exceptMin
+        self.exceptMax = exceptMax
+
+        # Utilizes the Random module to "throw the dice" between Min and Max, discards results within the except limits.
+        self.diceRoll = random.randint(self.min, self.max)
+        if self.exceptMin <= self.diceRoll <= self.exceptMax:
+            while self.exceptMin <= self.diceRoll <= self.exceptMax:
+                self.diceRoll = random.randint(self.min, self.max)
+        print("You rolled " + str(self.diceRoll))
+        print('')
+
+        # Finds the first outcome which the rolled value is within.
+        for n in range(0, self.outcomeAmount):
+            if self.OutcomeArray[n].min <= self.diceRoll <= self.OutcomeArray[n].max:
+                self.gotoTable, self.exceptMin, self.exceptMax = self.OutcomeArray[n].getContentInfo()
+
+        return self.gotoTable, self.exceptMin, self.exceptMax
+
 
 # Defines the possible outcomes, as well as their min/max-values.
 class TableContent:
@@ -124,9 +147,12 @@ class TableContent:
     max = 100
     output = "Empty"
     gotoTable = 0
+    exceptMin = 0
+    exceptMax = 0
+
     def __init__(self, row):
         self.row = row
-        # Checks if the user has typed the min and max values into the correct cells. Otherwise, it switches them.
+        # Checks if the user has typed the min and max values into the correct cells. Otherwise it switches them.
         if str_to_int_or_float(diceSheet["B" + str(self.row)].value) < str_to_int_or_float(diceSheet["B" + str(self.row + 1)].value):
             self.min = str_to_int_or_float(diceSheet["B" + str(self.row)].value)
             self.max = str_to_int_or_float(diceSheet["B" + str(self.row + 1)].value)
@@ -140,11 +166,24 @@ class TableContent:
         # Checks for possible values in the goto-column.
         if diceSheet["D" + str(self.row)].value:
             self.gotoTable = str_to_int_or_float(diceSheet["D" + str(self.row)].value)
+            # Checks for possible values in the except-column
+            if diceSheet["E" + str(self.row)].value and diceSheet["E" + str(self.row + 1)].value:
+                # Checks if the user has typed the min/max values into the correct cells. Otherwise it switches them.
+                # Prepare vars
+                if str_to_int_or_float(diceSheet["E" + str(self.row)].value) < str_to_int_or_float(
+                        diceSheet["E" + str(self.row + 1)].value):
+                    self.exceptMin = str_to_int_or_float(diceSheet["E" + str(self.row)].value)
+                    self.exceptMax = str_to_int_or_float(diceSheet["E" + str(self.row + 1)].value)
+                else:
+                    self.exceptMin = str_to_int_or_float(diceSheet["E" + str(self.row + 1)].value)
+                    self.exceptMax = str_to_int_or_float(diceSheet["E" + str(self.row)].value)
+
+
 
     def getContentInfo(self):
         print(str(self.output))
         print('')
-        return self.gotoTable
+        return self.gotoTable, self.exceptMin, self.exceptMax
 
 
 # Running code:
@@ -211,7 +250,7 @@ while True:
     # If input is greater than 0, the appropriate table will be found.
     if 0 < userInput <= tableAmount:
         print('Rolling on table ' + str(userInput) + '...')
-        gotoTable = TableArray[userInput - 1].roll()
+        gotoTable, exceptMin, exceptMax = TableArray[userInput - 1].roll()
         recursiveProtectionVariable = 0
 
     elif len(TableArray) < userInput:
@@ -222,10 +261,10 @@ while True:
     elif userInput <= 0:
         break
 
-    # If a table number is stored, in the 'GoTo'-cell, roll in that table as well.
+    # If a table number is stored in the 'GoTo'-cell, roll in that table as well.
     while gotoTable:
         print('Rolling on table ' + str(gotoTable) + '...')
-        gotoTable = TableArray[gotoTable - 1].roll()
+        gotoTable, exceptMin, exceptMax = TableArray[gotoTable - 1].gotoRoll(exceptMin, exceptMax)
         # If the program has executed more than x tabels since user-input,
         # it will shut down, as to not run in an infinite loop.
         recursiveProtectionVariable += 1
